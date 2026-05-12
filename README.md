@@ -7,7 +7,7 @@ Port of [HiFi-LoFi/FFTConvolver](https://github.com/HiFi-LoFi/FFTConvolver) to p
 ## Features
 
 - **Real-time safe**: No allocations, locks, or unpredictable operations during audio processing
-- **Highly efficient**: Partitioned FFT convolution algorithm with uniform block sizes
+- **Highly efficient**: Partitioned FFT convolution algorithm with uniform and non-uniform block sizes
 - **Zero latency**: Output is sample-aligned with input (excluding processing time)
 - **Flexible**: Handles arbitrary input/output buffer sizes through internal buffering
 - **Generic**: Works with `f32` and `f64` floating-point types
