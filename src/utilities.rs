@@ -56,6 +56,22 @@ pub fn complex_multiply_accumulate<F: FftNum>(
     }
 }
 
+/// Computes the optimal tail block size for a two-stage convolver
+/// using García's formula (AES 2002).
+///
+/// For a given head block size N and impulse response length T, the optimal
+/// tail block size B minimizes the total computational cost of the double-FDL
+/// convolution scheme.
+pub fn compute_tail_block_size(head_block_size: usize, ir_len: usize) -> usize {
+    const K: f64 = 1.5;
+    let n = head_block_size as f64;
+    let t = ir_len as f64;
+    let kn = K * n / (2.0 * 2.0_f64.ln());
+    let b = -kn + (kn * kn + t * n).sqrt();
+    let b = next_power_of_2(b.ceil().max(1.0) as usize);
+    b.max(2 * head_block_size)
+}
+
 pub fn sum<F: FftNum>(result: &mut [F], a: &[F], b: &[F]) {
     assert_eq!(result.len(), a.len());
     assert_eq!(result.len(), b.len());
@@ -78,6 +94,7 @@ mod tests {
     use realfft::num_complex::Complex;
 
     use crate::utilities::complex_multiply_accumulate;
+    use crate::utilities::compute_tail_block_size;
     use crate::utilities::copy_and_pad;
     use crate::utilities::next_power_of_2;
     use crate::utilities::sum;
@@ -151,6 +168,24 @@ mod tests {
         assert_eq!(result[7].im, 53.);
         assert_eq!(result[8].im, 65.);
         assert_eq!(result[9].im, 81.);
+    }
+
+    #[test]
+    fn compute_tail_block_size_test() {
+        // For head=64, ir=131072 (3s reverb at 44.1kHz), should get a reasonable power of 2
+        let b = compute_tail_block_size(64, 131072);
+        assert!(b.is_power_of_two());
+        assert!(b >= 128); // at least 2 * head
+        assert!(b <= 8192); // reasonable upper bound
+
+        // Must always be at least 2 * head_block_size
+        let b = compute_tail_block_size(64, 100);
+        assert!(b >= 128);
+
+        // Small head, long IR
+        let b = compute_tail_block_size(32, 100000);
+        assert!(b.is_power_of_two());
+        assert!(b >= 64);
     }
 
     #[test]
