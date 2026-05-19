@@ -8,13 +8,13 @@ use crate::fft::Fft;
 use crate::utilities::{
     complex_multiply_accumulate, complex_size, copy_and_pad, next_power_of_2, sum,
 };
-pub use two_stage::TwoStageFFTConvolver;
-pub use utilities::compute_tail_block_size;
 use realfft::num_complex::Complex;
 use realfft::num_traits::Zero;
 use realfft::{FftError, FftNum};
 use rtsan_standalone::nonblocking;
 use thiserror::Error;
+pub use two_stage::TwoStageFFTConvolver;
+pub use utilities::compute_tail_block_size;
 
 #[derive(Error, Debug)]
 pub enum FFTConvolverError {

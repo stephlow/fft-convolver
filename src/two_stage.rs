@@ -81,7 +81,7 @@ impl<F: FftNum> TwoStageFFTConvolver<F> {
     /// The tail block size determines efficiency for the tail portion and will also be
     /// rounded up to the next power of 2.
     ///
-    /// Use [`compute_tail_block_size`](crate::compute_tail_block_size) to calculate an
+    /// Use [`compute_tail_block_size`] to calculate an
     /// optimal tail block size based on García's formula.
     ///
     /// All memory allocations happen during initialization, making subsequent processing
@@ -251,8 +251,7 @@ impl<F: FftNum> TwoStageFFTConvolver<F> {
             if ir_len > self.tail_block_size {
                 let conv1_ir_len = (ir_len - self.tail_block_size).min(self.tail_block_size);
                 self.tail_convolver0.set_response(
-                    &impulse_response
-                        [self.tail_block_size..self.tail_block_size + conv1_ir_len],
+                    &impulse_response[self.tail_block_size..self.tail_block_size + conv1_ir_len],
                 )?;
             } else {
                 self.tail_convolver0.set_response(&[])?;
