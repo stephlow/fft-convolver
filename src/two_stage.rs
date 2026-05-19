@@ -337,6 +337,7 @@ impl<F: FftNum> TwoStageFFTConvolver<F> {
             if !self.tail_precalculated0.is_empty() {
                 let precalc = &self.tail_precalculated0;
                 let mut pos = self.precalculated_pos;
+                #[allow(clippy::explicit_counter_loop)]
                 for sample in &mut output[sum_begin..sum_end] {
                     *sample = *sample + precalc[pos];
                     pos += 1;
@@ -347,6 +348,7 @@ impl<F: FftNum> TwoStageFFTConvolver<F> {
             if !self.tail_precalculated.is_empty() {
                 let precalc = &self.tail_precalculated;
                 let mut pos = self.precalculated_pos;
+                #[allow(clippy::explicit_counter_loop)]
                 for sample in &mut output[sum_begin..sum_end] {
                     *sample = *sample + precalc[pos];
                     pos += 1;
