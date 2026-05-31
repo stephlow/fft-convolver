@@ -122,6 +122,8 @@ impl<F: FftNum> FFTConvolver<F> {
             return Err(FFTConvolverError::BlockSizeZero);
         }
 
+        *self = Self::default();
+
         self.ir_len = impulse_response.len();
 
         if self.ir_len == 0 {
@@ -706,5 +708,61 @@ mod tests {
             "output[3] should be 0.1, got {}",
             output[3]
         );
+    }
+
+    #[test]
+    fn reinit_with_shorter_ir_matches_fresh_init() {
+        let long_ir = vec![0.5_f32; 1000];
+        let short_ir = vec![0.8_f32, 0.6, 0.4, 0.2];
+        let block_size = 4;
+
+        // Re-initialized convolver
+        let mut reinit = FFTConvolver::<f32>::default();
+        reinit.init(block_size, &long_ir).unwrap();
+        reinit.init(block_size, &short_ir).unwrap();
+
+        // Freshly initialized convolver
+        let mut fresh = FFTConvolver::<f32>::default();
+        fresh.init(block_size, &short_ir).unwrap();
+
+        let input = vec![1.0_f32; 64];
+        let mut output_reinit = vec![0.0_f32; 64];
+        let mut output_fresh = vec![0.0_f32; 64];
+
+        reinit.process(&input, &mut output_reinit).unwrap();
+        fresh.process(&input, &mut output_fresh).unwrap();
+
+        for i in 0..output_reinit.len() {
+            assert!(
+                (output_reinit[i] - output_fresh[i]).abs() < 1e-5,
+                "Mismatch at index {}: reinit produced {}, fresh produced {}",
+                i,
+                output_reinit[i],
+                output_fresh[i]
+            );
+        }
+    }
+
+    #[test]
+    fn reinit_with_empty_ir_produces_silence() {
+        let long_ir = vec![0.5_f32; 1000];
+        let block_size = 4;
+
+        let mut convolver = FFTConvolver::<f32>::default();
+        convolver.init(block_size, &long_ir).unwrap();
+        convolver.init(block_size, &[]).unwrap();
+
+        let input = vec![1.0_f32; 64];
+        let mut output = vec![0.0_f32; 64];
+        convolver.process(&input, &mut output).unwrap();
+
+        for (i, &sample) in output.iter().enumerate() {
+            assert!(
+                sample.abs() < 1e-10,
+                "Expected silence at index {}, got {}",
+                i,
+                sample
+            );
+        }
     }
 }

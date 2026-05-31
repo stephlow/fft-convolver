@@ -92,7 +92,8 @@ impl<F: FftNum> TwoStageFFTConvolver<F> {
     /// * `head_block_size` - Block size for the head convolver (determines latency).
     ///   Will be rounded up to the next power of 2. Must be > 0.
     /// * `tail_block_size` - Block size for the tail convolver (determines efficiency).
-    ///   Will be rounded up to the next power of 2. Must be > 0 and >= head_block_size.
+    ///   Will be rounded up to the next power of 2. Must be > 0.
+    ///   If smaller than `head_block_size`, the two values are automatically swapped.
     /// * `impulse_response` - The impulse response to convolve with. Can be empty.
     ///
     /// # Returns
@@ -120,6 +121,8 @@ impl<F: FftNum> TwoStageFFTConvolver<F> {
         if head_block_size == 0 || tail_block_size == 0 {
             return Err(FFTConvolverError::BlockSizeZero);
         }
+
+        *self = Self::default();
 
         self.head_block_size = next_power_of_2(head_block_size);
         self.tail_block_size = next_power_of_2(tail_block_size);
@@ -525,6 +528,45 @@ mod tests {
 
         assert_eq!(convolver.head_block_size, 64);
         assert_eq!(convolver.tail_block_size, 4096);
+    }
+
+    #[test]
+    fn reinit_with_shorter_ir_does_not_leave_stale_buffers() {
+        let short_ir = vec![0.5_f32; 4];
+
+        // Re-initialized convolver
+        let mut reinit = TwoStageFFTConvolver::<f32>::default();
+        let long_ir = vec![0.5_f32; 10000];
+        reinit.init(64, 4096, &long_ir).unwrap();
+        reinit.init(64, 4096, &short_ir).unwrap();
+
+        // Tail buffers must be empty
+        assert!(reinit.tail_input.is_empty());
+        assert!(reinit.tail_output0.is_empty());
+        assert!(reinit.tail_precalculated0.is_empty());
+        assert!(reinit.tail_output.is_empty());
+        assert!(reinit.tail_precalculated.is_empty());
+
+        // Output must match a freshly initialized convolver
+        let mut fresh = TwoStageFFTConvolver::<f32>::default();
+        fresh.init(64, 4096, &short_ir).unwrap();
+
+        let input = vec![1.0_f32; 256];
+        let mut output_reinit = vec![0.0_f32; 256];
+        let mut output_fresh = vec![0.0_f32; 256];
+
+        reinit.process(&input, &mut output_reinit).unwrap();
+        fresh.process(&input, &mut output_fresh).unwrap();
+
+        for i in 0..output_reinit.len() {
+            assert!(
+                (output_reinit[i] - output_fresh[i]).abs() < 1e-5,
+                "Mismatch at index {}: reinit produced {}, fresh produced {}",
+                i,
+                output_reinit[i],
+                output_fresh[i]
+            );
+        }
     }
 
     #[test]
